@@ -14,3 +14,13 @@ WHERE name IN (
 
 #how to edit config file
 sudoedit /etc/postgresql/18/main/postgresql.conf
+
+Edit the active configuration:
+sudoedit /etc/postgresql/18/main/postgresql.conf
+Reload PostgreSQL:
+sudo systemctl reload postgresql
+Some parameters require a restart:
+sudo systemctl restart postgresql
+Check whether a restart is pending:
+SELECT name, setting, pending_restart FROM pg_settings WHERE pending_restart;
+
