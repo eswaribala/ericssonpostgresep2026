@@ -1,0 +1,70 @@
+1. Install Google Cloud CLI on Windows
+
+Download and install the Google Cloud CLI for Windows.
+
+During installation, select:
+
+Install bundled Python
+Add gcloud to PATH
+Start Google Cloud CLI shell
+
+After installation, open a new PowerShell or Google Cloud CLI Shell window:
+
+gcloud version
+2. Authenticate
+gcloud auth login
+
+Your browser opens. Sign in using the Google account that has access to the project.
+
+Verify:
+
+gcloud auth list
+
+gcloud auth application-default login
+
+Set the project:
+
+gcloud auth application-default set-quota-project postgresql-admin-lab-2026
+
+gcloud config set project postgresql-admin-lab-2026
+
+Verify:
+
+gcloud config get-value project
+
+Expected:
+
+postgresql-admin-lab-2026
+
+
+gcloud config list
+
+gcloud config set compute/region asia-south1
+gcloud config set compute/zone asia-south1-a
+
+Verify project access and billing:
+
+gcloud projects describe postgresql-admin-lab-2026
+gcloud billing projects describe postgresql-admin-lab-2026
+
+Once confirmed, enable the APIs:
+
+IAP means Identity-Aware Proxy.
+/*
+explanation
+In your GCP Patroni lab, IAP lets you securely connect from your Windows machine to the Ubuntu VMs using SSH, even though the VMs have no public IP addresses.
+
+Windows PC → Google IAP → Private GCP VM
+
+You connect using:
+
+gcloud compute ssh pg-node-1 --zone=asia-south1-a --tunnel-through-iap
+*/
+
+gcloud services enable compute.googleapis.com iap.googleapis.com logging.googleapis.com monitoring.googleapis.com
+
+Final check:
+
+gcloud config list
+
+

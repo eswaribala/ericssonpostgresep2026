@@ -1,0 +1,90 @@
+A project such as postgresql-admin-lab-2026
+Billing account linked to that project
+Your email added as Project Owner or equivalent lab administrator
+Required APIs enabled
+Compute quota available in asia-south1
+Budget alerts configured
+
+To check:
+
+Click eswaribala70-org at the top.
+Open the All or Projects tab.
+Look for the PostgreSQL training project.
+Select it.
+Go to Billing → Overview and verify: “This project is linked to a billing account.”
+Go to IAM & Admin → IAM and check your assigned role.
+
+Click Budgets & alerts on the left.
+Create a project-specific budget:
+Name: PostgreSQL Lab Budget
+Scope: postgresql-admin-lab-2026
+Service: all
+Amount: choose your approved limit, for example ₹3,000
+Alerts: 50%, 80%, 90% and 100%
+Go to Billing → Account management.
+Check that postgresql-admin-lab-2026 appears under linked projects.
+Select the PostgreSQL project using the top project selector.
+Check IAM & Admin → IAM and confirm you have Owner access.
+
+
+2. Select the project
+
+Using the project selector at the top, select:
+
+postgresql-admin-lab-2026
+
+Make sure the project—not eswaribala70-org—appears at the top.
+
+3. Verify your access
+
+Go to:
+
+Navigation menu → IAM & Admin → IAM
+
+Confirm that your Google email has:
+
+Owner
+
+For this dedicated training project, Owner access allows you to create and remove the complete lab environment.
+
+4. Enable APIs
+
+Open Cloud Shell and run:
+
+gcloud config set project postgresql-admin-lab-2026
+
+gcloud services enable \
+  compute.googleapis.com \
+  sqladmin.googleapis.com \
+  container.googleapis.com \
+  storage.googleapis.com \
+  servicenetworking.googleapis.com \
+  monitoring.googleapis.com \
+  logging.googleapis.com \
+  secretmanager.googleapis.com \
+  artifactregistry.googleapis.com \
+  iam.googleapis.com \
+  iamcredentials.googleapis.com \
+  cloudresourcemanager.googleapis.com \
+  datamigration.googleapis.com
+
+Verify the selected project:
+
+gcloud config get-value project
+
+Expected:
+
+postgresql-admin-lab-2026
+5. First resource to create
+
+After the checks above, create only one Ubuntu 24.04 Compute Engine VM for the initial PostgreSQL installation labs:
+
+Name: pg-node-1
+Region: asia-south1
+Zone: asia-south1-a
+Machine: e2-standard-2
+Boot disk: 30 GB
+OS: Ubuntu 24.04 LTS
+
+Do not create Cloud SQL, GKE, or the other two Patroni VMs yet.
+
