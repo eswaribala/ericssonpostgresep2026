@@ -1,0 +1,13 @@
+sudo -iu postgres psql -d postgres
+SHOW config_file; 
+SHOW hba_file; 
+SHOW ident_file; 
+SHOW data_directory;
+SELECT name, setting
+FROM pg_settings
+WHERE name IN (
+    'config_file',
+    'hba_file',
+    'ident_file',
+    'data_directory'
+);
