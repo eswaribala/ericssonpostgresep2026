@@ -11,3 +11,6 @@ WHERE name IN (
     'ident_file',
     'data_directory'
 );
+
+#how to edit config file
+sudoedit /etc/postgresql/18/main/postgresql.conf
