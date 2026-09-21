@@ -34,4 +34,7 @@ SELECT line_number,
        error
 FROM pg_hba_file_rules;
 
+#check memory settings
+select name,setting,unit from pg_settings WHERE name IN('shared_buffers','wal_buffers','work_mem','maintenance_work_mem','autovaccum_work_mem','temp_buffers','effective_cache_size','max_connections') order by name;
+
 
