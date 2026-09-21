@@ -1,0 +1,45 @@
+2.4 Configure PGDG if it is missing
+Install the prerequisites:
+sudo apt update
+
+sudo apt install -y \
+  curl \
+  ca-certificates
+Create the PGDG key directory:
+sudo install -d \
+  -m 0755 \
+  /usr/share/postgresql-common/pgdg
+Download the repository signing key:
+sudo curl \
+  --fail \
+  -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+  https://www.postgresql.org/media/keys/ACCC4CF8.asc
+Load the Ubuntu release information:
+. /etc/os-release
+Add the PGDG repository:
+echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" |
+sudo tee /etc/apt/sources.list.d/pgdg.list
+Update the package list:
+sudo apt update
+Verify that PostgreSQL 18 is available:
+apt-cache policy postgresql-18
+________________________________________
+2.5 Install PostgreSQL, etcd and dependencies
+Run this as one complete command:
+sudo apt install -y \
+  postgresql-18 \
+  postgresql-client-18 \
+  python3-venv \
+  python3-dev \
+  gcc \
+  libpq-dev \
+  etcd-server \
+  etcd-client
+Verify installed packages:
+dpkg -l |
+grep -E 'postgresql-18|postgresql-client-18|etcd-server|etcd-client'
+________________________________________
+2.6 Inspect existing PostgreSQL clusters
+The PostgreSQL package may automatically create a cluster named 18/main. A cloned EC2 instance may also contain other clusters.
+List them:
+sudo pg_lsclusters
