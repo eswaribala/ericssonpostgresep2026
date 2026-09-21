@@ -38,3 +38,43 @@ FROM pg_hba_file_rules;
 select name,setting,unit from pg_settings WHERE name IN('shared_buffers','wal_buffers','work_mem','maintenance_work_mem','autovaccum_work_mem','temp_buffers','effective_cache_size','max_connections') order by name;
 
 
+#test locks
+select * from pg_locks order by pid,locktype,mode;
+sudo -iu postgres psql
+
+CREATE DATABASE bmw_service
+  WITH OWNER = postgres
+       ENCODING = 'UTF8'
+       TEMPLATE = template0;
+
+CREATE DATABASE bmw_reporting
+  WITH OWNER = postgres
+       ENCODING = 'UTF8'
+       TEMPLATE = template0;
+
+\l+
+\c bmw_service
+SELECT current_database(), current_user;
+
+CREATE SCHEMA workshop;
+CREATE TABLE workshop.vehicle_service (
+    service_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    vehicle_no varchar(30) NOT NULL,
+    service_type varchar(80) NOT NULL,
+    service_date date NOT NULL DEFAULT CURRENT_DATE,
+    amount numeric(12,2) CHECK (amount >= 0)
+);
+
+INSERT INTO workshop.vehicle_service
+  (vehicle_no, service_type, amount)
+VALUES
+  ('BMW1001', 'Battery inspection', 4500.00),
+  ('BMW1002', 'Annual service', 12500.00);
+
+TABLE workshop.vehicle_service;
+\q
+Verification
+sudo -iu postgres psql -d bmw_service -c   "SELECT datname, pg_size_pretty(pg_database_size(datname)) FROM pg_database ORDER BY 1;"
+sudo -iu postgres psql -d bmw_service -c   "SELECT schemaname, tablename FROM pg_tables WHERE schemaname='workshop';"
+
+
