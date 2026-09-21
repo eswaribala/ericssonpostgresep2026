@@ -24,3 +24,14 @@ sudo systemctl restart postgresql
 Check whether a restart is pending:
 SELECT name, setting, pending_restart FROM pg_settings WHERE pending_restart;
 
+#chek hba file
+SELECT line_number,
+       type,
+       database,
+       user_name,
+       address,
+       auth_method,
+       error
+FROM pg_hba_file_rules;
+
+
