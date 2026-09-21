@@ -1,0 +1,164 @@
+1. Minimum machine configuration
+Item	Minimum	Preferred
+RAM	16 GB	32 GB
+CPU	4 cores	8 cores
+Disk	120 GB SSD	200 GB SSD
+OS	Ubuntu 24.04 LTS	Ubuntu 24.04 LTS
+Internet	Required	Stable broadband
+If participants use Windows, install Ubuntu 24.04 in VMware Workstation, VirtualBox, or WSL2. For the HA and Kubernetes labs, a full Ubuntu VM is preferred.
+
+2. Base OS preparation
+Run these commands in Ubuntu Terminal:
+
+sudo apt update
+sudo apt upgrade -y
+
+sudo apt install -y \
+  curl wget git unzip vim nano ca-certificates gnupg lsb-release \
+  build-essential net-tools jq tree \
+  python3 python3-pip python3-venv \
+  openssl
+Create a working folder:
+
+mkdir -p ~/postgres-labs/{scripts,backups,logs,data,terraform,ansible,kubernetes}
+cd ~/postgres-labs
+3. Install PostgreSQL 17 and pgAdmin 4
+Add the official PostgreSQL repository:
+
+sudo install -d /usr/share/postgresql-common/pgdg
+sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh \
+  https://www.postgresql.org/media/keys/ACCC4CF8.asc
+
+echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh] \
+https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" \
+| sudo tee /etc/apt/sources.list.d/pgdg.list
+
+sudo apt update
+Install PostgreSQL and useful extensions:
+
+sudo apt install -y \
+  postgresql-17 \
+  postgresql-client-17 \
+  postgresql-contrib-17 \
+  pgadmin4 \
+  pgbackrest \
+  pgbouncer
+Start and verify PostgreSQL:
+
+sudo systemctl enable --now postgresql
+sudo systemctl status postgresql
+
+sudo -u postgres psql -c "SELECT version();"
+Create the course database and lab user:
+
+sudo -u postgres psql
+CREATE ROLE labadmin WITH LOGIN PASSWORD 'LabAdmin@123' SUPERUSER;
+CREATE DATABASE trainingdb OWNER labadmin;
+\q
+Connect:
+
+psql -h localhost -U labadmin -d trainingdb
+4. Install Docker and Docker Compose
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+sudo usermod -aG docker $USER
+newgrp docker
+
+docker --version
+docker compose version
+Docker will be used for Patroni, etcd, PgPool-II, Prometheus, Grafana, exporters, and multi-node PostgreSQL labs.
+
+5. Install Kubernetes tools
+Install kubectl:
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s \
+https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+
+kubectl version --client
+Install Kind:
+
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+
+kind version
+Create a local Kubernetes cluster:
+
+kind create cluster --name postgres-lab
+kubectl get nodes
+Install Helm:
+
+curl https://baltocdn.com/helm/signing.asc | \
+sudo gpg --dearmor -o /usr/share/keyrings/helm.gpg
+
+sudo apt install -y apt-transport-https
+
+echo "deb [signed-by=/usr/share/keyrings/helm.gpg] \
+https://baltocdn.com/helm/stable/debian/ all main" | \
+sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+
+sudo apt update
+sudo apt install -y helm
+
+helm version
+6. Install cloud and automation tools
+Google Cloud SDK
+sudo apt install -y apt-transport-https ca-certificates gnupg curl
+
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] \
+https://packages.cloud.google.com/apt cloud-sdk main" | \
+sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
+
+sudo apt update
+sudo apt install -y google-cloud-cli
+
+gcloud init
+Terraform and Ansible
+sudo apt install -y terraform ansible
+
+terraform --version
+ansible --version
+
+7. Required accounts and access
+Each participant needs:
+
+A Google Cloud account/project with billing enabled.
+
+Permission to use Compute Engine, Cloud SQL, Cloud Storage, IAM, VPC, Cloud Monitoring, and Cloud Logging.
+
+Ability to create service accounts and download a service-account JSON key for Terraform/automation labs.
+
+Docker Hub access if image pull limits are encountered.
+
+For classroom cost control, participants can work in groups of 2-3 for GCP labs while keeping PostgreSQL, Docker, and Kubernetes labs individual.
+
+
+
+9. Lab readiness checklist
+Before Day 1, confirm:
+
+psql --version
+pgbackrest version
+docker --version
+docker compose version
+kubectl version --client
+kind version
+helm version
+terraform --version
+ansible --version
+gcloud version
+The participant is ready when:
+
+PostgreSQL 17 is running.
+trainingdb and labadmin are created.
+Docker runs containers without sudo.
+Kind cluster has one control-plane node.
+GCP login is successful.
+Terraform, Ansible, Helm, and kubectl commands work.
