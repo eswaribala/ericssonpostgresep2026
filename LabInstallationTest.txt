@@ -162,3 +162,8 @@ Docker runs containers without sudo.
 Kind cluster has one control-plane node.
 GCP login is successful.
 Terraform, Ansible, Helm, and kubectl commands work.
+
+#Install AWS CLI
+#export the path
+echo 'export PATH="/usr/local/bin:$PATH"'>>~./bashrc
+$aws --version
