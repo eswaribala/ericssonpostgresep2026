@@ -95,6 +95,14 @@ helm upgrade prometheus prometheus-community/prometheus -f values.yaml -n promet
 
 kubectl get pods -n prometheus
 
+- job_name: 'postgres-app'
+  static_configs:
+    - targets:
+        - 'postgres-exporter-prometheus-postgres-exporter.postgres-ha.svc.cluster.local:80'
+helm upgrade prometheus prometheus-community/prometheus -f values.yaml -n prometheus
+#upgrade helm
+helm upgrade prometheus prometheus-community/prometheus -f values.yaml -n prometheus
+
 #to connect prometheus to grafana select data source as prometheus and add the following url
 http://host.docker.internal:9090
 
