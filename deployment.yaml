@@ -1,0 +1,36 @@
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: acid-postgres-ha
+  namespace: postgres-ha
+spec:
+  teamId: "acid"
+
+  volume:
+    size: 5Gi
+
+  numberOfInstances: 3
+
+  users:
+    bank_app: []
+
+  databases:
+    banking: bank_app
+
+  postgresql:
+    version: "18"
+
+  enableConnectionPooler: true
+
+  connectionPooler:
+    numberOfInstances: 2
+    mode: "transaction"
+    schema: "pooler"
+    user: "pooler"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 100Mi
+      limits:
+        cpu: "1"
+        memory: 100Mi
