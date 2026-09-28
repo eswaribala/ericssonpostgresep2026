@@ -8,6 +8,35 @@ kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- pgbackrest info
 
 kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- env | grep -Ei 'PGBACKREST|WALG|WALE|S3|GCS'
 
+cat > pgbackrest-additional-volumes-patch.json <<'EOF'
+{
+  "spec": {
+    "additionalVolumes": [
+      {
+        "name": "pgbackrest-config",
+        "mountPath": "/etc/pgbackrest",
+        "targetContainers": ["postgres"],
+        "volumeSource": {
+          "configMap": {
+            "name": "pgbackrest-config"
+          }
+        }
+      },
+      {
+        "name": "pgbackrest-secret",
+        "mountPath": "/etc/pgbackrest-secret",
+        "targetContainers": ["postgres"],
+        "volumeSource": {
+          "secret": {
+            "secretName": "pgbackrest-repo-secret"
+          }
+        }
+      }
+    ]
+  }
+}
+EOF
+
 kubectl -n postgres-ha get pods \
   acid-postgres-ha-0 acid-postgres-ha-1 acid-postgres-ha-2 \
   -o custom-columns='NAME:.metadata.name,IMAGE:.spec.containers[0].image,READY:.status.containerStatuses[0].ready'
