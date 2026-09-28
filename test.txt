@@ -1,0 +1,6 @@
+kubectl -n postgres-ha get pods \
+  acid-postgres-ha-0 acid-postgres-ha-1 acid-postgres-ha-2 \
+  -o custom-columns='NAME:.metadata.name,IMAGE:.spec.containers[0].image,READY:.status.containerStatuses[0].ready'
+
+kubectl -n postgres-ha get pod acid-postgres-ha-0 \
+  -o jsonpath='{.spec.imagePullSecrets}{"\n"}'
