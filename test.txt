@@ -6,3 +6,4 @@ kubectl -n postgres-ha get pod acid-postgres-ha-0 \
   -o jsonpath='{.spec.imagePullSecrets}{"\n"}'
 kubectl -n postgres-ha get pod acid-postgres-ha-1 \
   -o jsonpath='{.spec.imagePullSecrets}{"\n"}{.status.containerStatuses[?(@.name=="postgres")].state}{"\n"}'
+kubectl -n postgres-ha exec acid-postgres-ha-1 -- pgbackrest version
