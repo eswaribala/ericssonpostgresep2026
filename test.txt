@@ -4,3 +4,5 @@ kubectl -n postgres-ha get pods \
 
 kubectl -n postgres-ha get pod acid-postgres-ha-0 \
   -o jsonpath='{.spec.imagePullSecrets}{"\n"}'
+kubectl -n postgres-ha get pod acid-postgres-ha-1 \
+  -o jsonpath='{.spec.imagePullSecrets}{"\n"}{.status.containerStatuses[?(@.name=="postgres")].state}{"\n"}'
