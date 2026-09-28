@@ -1,6 +1,12 @@
 kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- pgbackrest version
 kubectl -n postgres-ha get pod acid-postgres-ha-0 \
 -o jsonpath='{range .spec.containers[?(@.name=="postgres")].volumeMounts[*]}{.name}{" -> "}{.mountPath}{"\n"}{end}'
+Run these three next and send me the output:
+kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- ls -la /etc/pgbackrest
+
+kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- pgbackrest info
+
+kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- env | grep -Ei 'PGBACKREST|WALG|WALE|S3|GCS'
 
 kubectl -n postgres-ha get pods \
   acid-postgres-ha-0 acid-postgres-ha-1 acid-postgres-ha-2 \
