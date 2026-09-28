@@ -39,6 +39,22 @@ EOF
 kubectl -n postgres-ha patch postgresql acid-postgres-ha \
   --type merge \
   --patch-file pgbackrest-additional-volumes-patch.json
+
+kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- \
+sh -c 'PGBACKREST_REPO1_CIPHER_PASS="$(cat /etc/pgbackrest-secret/repo-cipher-pass)" \
+pgbackrest --stanza=postgres-ha info'
+
+kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- \
+sh -c 'PGBACKREST_REPO1_CIPHER_PASS="$(cat /etc/pgbackrest-secret/repo-cipher-pass)" \
+pgbackrest --stanza=postgres-ha stanza-create'
+
+kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- \
+sh -c 'PGBACKREST_REPO1_CIPHER_PASS="$(cat /etc/pgbackrest-secret/repo-cipher-pass)" \
+pgbackrest --stanza=postgres-ha check'
+
+kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- \
+sh -c 'PGBACKREST_REPO1_CIPHER_PASS="$(cat /etc/pgbackrest-secret/repo-cipher-pass)" \
+pgbackrest --stanza=postgres-ha info'
 kubectl -n postgres-ha get pods \
   acid-postgres-ha-0 acid-postgres-ha-1 acid-postgres-ha-2 \
   -o custom-columns='NAME:.metadata.name,IMAGE:.spec.containers[0].image,READY:.status.containerStatuses[0].ready'
