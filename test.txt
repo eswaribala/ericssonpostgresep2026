@@ -7,3 +7,16 @@ kubectl -n postgres-ha get pod acid-postgres-ha-0 \
 kubectl -n postgres-ha get pod acid-postgres-ha-1 \
   -o jsonpath='{.spec.imagePullSecrets}{"\n"}{.status.containerStatuses[?(@.name=="postgres")].state}{"\n"}'
 kubectl -n postgres-ha exec acid-postgres-ha-1 -- pgbackrest version
+
+#For the PostgreSQL backup lab, create a Google Cloud Storage bucket first. Run these commands in Google Cloud Shell, one at a #time.
+1. Check which project is active:
+gcloud config get-value project
+
+2. Set your project ID. Replace the value if step 1 showed a different project:
+gcloud config set project postgresqladministratorlab
+
+3. Create a bucket. The bucket name must be globally unique, so change the name if Google Cloud says it is already taken:
+gcloud storage buckets create gs://postgres-ha-backups-parameswari-2026 --project=postgresqladministratorlab --location=asia-south1 --default-storage-class=STANDARD --uniform-bucket-level-access --public-access-prevention
+
+4. Confirm it exists:
+gcloud storage buckets describe gs://postgres-ha-backups-parameswari-2026
