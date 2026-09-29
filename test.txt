@@ -8,6 +8,10 @@ kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- pgbackrest info
 
 kubectl -n postgres-ha exec acid-postgres-ha-0 -c postgres -- env | grep -Ei 'PGBACKREST|WALG|WALE|S3|GCS'
 
+kubectl -n postgres-ha patch postgresql acid-postgres-ha --type merge -p '{"spec":{"postgresql":{"parameters":{"archive_mode":"on","archive_command":"PGBACKREST_REPO1_CIPHER_PASS=$(cat /etc/pgbackrest-secret/repo-cipher-pass) pgbackrest --config=/etc/pgbackrest/pgbackrest.conf --stanza=postgres-ha archive-push %p"}}}}'
+
+kubectl -n "$NS" exec "$PRIMARY" -c postgres -- psql -U postgres -Atqc "show archive_command;"
+
 cat > pgbackrest-additional-volumes-patch.json <<'EOF'
 {
   "spec": {
