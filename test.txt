@@ -17,6 +17,8 @@ kubectl -n "$NS" exec "$PRIMARY" -c postgres -- psql -U postgres -x -c "select n
 
 kubectl -n "$NS" exec "$PRIMARY" -c postgres -- psql -U postgres -Atqc "show archive_command;"
 kubectl -n postgres-ha exec "$PRIMARY" -c postgres -- patronictl show-config
+
+PRIMARY=$(for pod in acid-postgres-ha-0 acid-postgres-ha-1 acid-postgres-ha-2; do v=$(kubectl -n postgres-ha exec "$pod" -c postgres -- psql -U postgres -Atqc "select pg_is_in_recovery();"); [ "$v" = "f" ] && echo "$pod" && break; done); echo "$PRIMARY"
 cat > pgbackrest-additional-volumes-patch.json <<'EOF'
 {
   "spec": {
