@@ -13,6 +13,7 @@ kubectl -n postgres-ha patch postgresql acid-postgres-ha --type merge -p '{"spec
  archive_command: 'PGBACKREST_REPO1_CIPHER_PASS=$(cat /etc/pgbackrest-secret/repo-cipher-pass) pgbackrest --config=/etc/pgbackrest/pgbackrest.conf --stanza=postgres-ha archive-push %p'
 
 kubectl -n "$NS" exec "$PRIMARY" -c postgres -- psql -U postgres -c "select pg_reload_conf();"
+kubectl -n "$NS" exec "$PRIMARY" -c postgres -- psql -U postgres -x -c "select name,setting,source,sourcefile,sourceline,pending_restart from pg_settings where name='archive_command';"
 
 kubectl -n "$NS" exec "$PRIMARY" -c postgres -- psql -U postgres -Atqc "show archive_command;"
 kubectl -n postgres-ha exec "$PRIMARY" -c postgres -- patronictl show-config
