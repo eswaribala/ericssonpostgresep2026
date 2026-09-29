@@ -1,0 +1,303 @@
+PGBACKREST RESTORE TOOLBOX - STEP-BY-STEP FIX
+==========================================
+
+Purpose
+Fix the two errors from the restore attempt:
+  mkdir: cannot create directory '/restore': Permission denied
+  cat: /etc/pgbackrest-secret/repo-cipher-pass: No such file or directory
+  ERROR: [032]: environment variable 'repo1-cipher-pass' must have a value
+
+Run the commands in Bash (Ubuntu, WSL, or Google Cloud Shell), not Windows CMD.
+Run each step separately and check its result before continuing.
+These instructions consolidate the steps discussed in the conversation.
+
+Names below follow the earlier commands. Confirm actual Secret, PVC, container,
+and stanza names before using them. YAML fragments are edits to your existing
+manifest; keep its image, config mount, GCS credentials, and other settings.
+Do not replace the complete manifest with a fragment.
+
+STEP 1 - SET AND CONFIRM THE NAMESPACE
+------------------------------------
+export NS=postgres-ha
+echo "$NS"
+
+Expected: postgres-ha
+
+STEP 2 - CHECK THE TOOLBOX POD
+-----------------------------
+kubectl -n "$NS" get pod pgbackrest-restore-toolbox
+
+Expected: Running.
+If it is not running, inspect the events:
+kubectl -n "$NS" describe pod pgbackrest-restore-toolbox
+
+STEP 3 - CHECK THE CONTAINER UID AND GID
+--------------------------------------
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- id
+
+Record uid, gid, and groups. Do not assume they are 10001.
+If the container name is different, find it and substitute it in commands:
+kubectl -n "$NS" get pod pgbackrest-restore-toolbox -o jsonpath='{.spec.containers[*].name}'
+
+STEP 4 - CHECK THE CIPHER SECRET DIRECTORY
+----------------------------------------
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- sh -lc 'ls -la /etc/pgbackrest-secret'
+
+The directory must contain a readable, nonempty file named repo-cipher-pass.
+Do not print its contents.
+
+STEP 5 - FIND THE EXISTING SECRET AND CHECK ITS KEYS
+--------------------------------------------------
+kubectl -n "$NS" get secrets
+
+For the example Secret name:
+kubectl -n "$NS" describe secret pgbackrest-secret
+
+Under Data, check for repo-cipher-pass. Describe shows key names and sizes,
+not decoded passwords.
+
+Optional, if jq is installed:
+kubectl -n "$NS" get secret pgbackrest-secret -o jsonpath='{.data}' | jq 'keys'
+
+If the actual Secret uses another name, use that name in subsequent steps.
+If its existing cipher key has another name, map that key to the file name
+repo-cipher-pass in the Secret volume instead of changing the password.
+
+STEP 6 - HANDLE A MISSING CIPHER KEY
+----------------------------------
+Skip this step if the existing key is present and correct.
+Use exactly the cipher password originally used for this backup repository.
+A new password cannot decrypt the existing backups.
+
+For a missing Secret, the following creates it without typing the password
+into a command-line argument. The prompt expects the existing password.
+
+read -r -s -p 'Existing repository cipher password: ' CIPHER_PASS
+printf '\n'
+printf '%s' "$CIPHER_PASS" | kubectl -n "$NS" create secret generic pgbackrest-secret --from-file=repo-cipher-pass=/dev/stdin
+unset CIPHER_PASS
+
+If the Secret already exists but lacks this key, do not delete it or replace
+unrelated GCS credential keys. Recover the cipher password from the original
+backup configuration and add only the missing key. If the key exists under
+another name, use the mapping described in Step 7.
+
+STEP 7 - INSPECT AND EDIT THE TOOLBOX MANIFEST
+-------------------------------------------
+kubectl -n "$NS" get pod pgbackrest-restore-toolbox -o yaml
+
+Open your original manifest:
+nano pgbackrest-restore-toolbox.yaml
+
+Under the existing container's volumeMounts, ensure:
+
+      - name: pgbackrest-secret
+        mountPath: /etc/pgbackrest-secret
+        readOnly: true
+
+Under spec.volumes, ensure:
+
+    - name: pgbackrest-secret
+      secret:
+        secretName: pgbackrest-secret
+
+If the actual key has a different name, use this form instead, substituting
+its verified name for ACTUAL_EXISTING_CIPHER_KEY:
+
+    - name: pgbackrest-secret
+      secret:
+        secretName: pgbackrest-secret
+        items:
+          - key: ACTUAL_EXISTING_CIPHER_KEY
+            path: repo-cipher-pass
+
+An items list mounts only the listed keys. Keep any other keys required by
+this mount in the list. Preserve separate GCS credential mounts unchanged.
+
+STEP 8 - CHECK THE CURRENT RESTORE MOUNT
+--------------------------------------
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- sh -lc 'ls -ld /restore / 2>/dev/null'
+
+Inspect the pod YAML from Step 7 for a volumeMount at /restore and its
+matching volume. A supplementary mount check is:
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- sh -lc 'mount | grep restore || true'
+
+STEP 9 - ADD OR CORRECT THE RESTORE VOLUME
+----------------------------------------
+Use a separate restore volume, never the live Patroni PGDATA volume.
+
+Under the existing container's volumeMounts:
+
+      - name: restore-data
+        mountPath: /restore
+
+For an existing dedicated restore PVC, under spec.volumes:
+
+    - name: restore-data
+      persistentVolumeClaim:
+        claimName: pgbackrest-restore-pvc
+
+Check that the named PVC exists:
+kubectl -n "$NS" get pvc pgbackrest-restore-pvc
+
+Use the actual dedicated restore PVC name. If it does not exist, provision
+it using your lab's storage class and capacity before recreating the pod.
+Do not guess a live database PVC name.
+
+Alternative ONLY for a disposable lab restore, under spec.volumes:
+
+    - name: restore-data
+      emptyDir: {}
+
+Choose one volume source, not both. emptyDir data is lost when the pod is
+deleted; it does not provide persistent restored storage.
+
+STEP 10 - SET THE POD FILESYSTEM GROUP
+-------------------------------------
+At pod spec.securityContext (not inside the container), merge:
+
+  securityContext:
+    fsGroup: 10001
+    fsGroupChangePolicy: OnRootMismatch
+
+10001 is an example. Use the verified appropriate numeric group from Step 3.
+Preserve existing securityContext fields. fsGroup supplies a supplementary
+group; it does not change the container UID. Volume ownership handling also
+depends on the storage driver, so the write test in Step 12 is essential.
+
+The intended structure is:
+
+spec:
+  securityContext:
+    fsGroup: 10001
+    fsGroupChangePolicy: OnRootMismatch
+  containers:
+    - name: pgbackrest-restore-toolbox
+      # Keep your existing image, command, environment, and config/GCS mounts.
+      volumeMounts:
+        - name: restore-data
+          mountPath: /restore
+        - name: pgbackrest-secret
+          mountPath: /etc/pgbackrest-secret
+          readOnly: true
+  volumes:
+    # Keep all existing config/GCS volumes.
+    - name: restore-data
+      persistentVolumeClaim:
+        claimName: pgbackrest-restore-pvc
+    - name: pgbackrest-secret
+      secret:
+        secretName: pgbackrest-secret
+
+This is a structure guide, NOT a complete manifest to apply as-is.
+In nano: Ctrl+O, Enter to save; Ctrl+X to exit.
+
+STEP 11 - RECREATE THE STANDALONE TOOLBOX POD
+------------------------------------------
+Volume mounts and pod security changes normally require pod recreation.
+First check whether a controller owns the pod:
+kubectl -n "$NS" get pod pgbackrest-restore-toolbox -o jsonpath='{.metadata.ownerReferences}'
+
+If there is an owner such as a Job or Deployment, update that controller's
+pod template. Do not use the standalone delete/recreate sequence below.
+
+For a standalone pod, after saving the complete corrected manifest:
+kubectl apply --dry-run=client -f pgbackrest-restore-toolbox.yaml
+
+This checks manifest parsing; it does not prove runtime mounts work.
+Deletion removes any emptyDir contents. Proceed only if the toolbox's
+disposable data can be discarded; keep any dedicated restore PVC.
+
+kubectl -n "$NS" delete pod pgbackrest-restore-toolbox
+kubectl apply -f pgbackrest-restore-toolbox.yaml
+kubectl -n "$NS" wait --for=condition=Ready pod/pgbackrest-restore-toolbox --timeout=180s
+
+If it fails:
+kubectl -n "$NS" describe pod pgbackrest-restore-toolbox
+
+STEP 12 - VERIFY RESTORE VOLUME WRITE ACCESS
+------------------------------------------
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- sh -ec 'id; ls -ld /restore; f=$(mktemp /restore/.write-test.XXXXXX); rm "$f"; echo "RESTORE WRITE OK"'
+
+Expected: RESTORE WRITE OK
+If this fails, stop and correct the mount/permissions before restoring.
+
+STEP 13 - VERIFY THE CIPHER SECRET FILE
+--------------------------------------
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- sh -ec 'test -r /etc/pgbackrest-secret/repo-cipher-pass; test -s /etc/pgbackrest-secret/repo-cipher-pass; echo "CIPHER SECRET OK"'
+
+Expected: CIPHER SECRET OK
+If missing, check the Secret name, key mapping, mount, and file permissions.
+
+STEP 14 - VERIFY THE PGBACKREST CONFIGURATION
+-------------------------------------------
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- sh -ec 'test -r /etc/pgbackrest/pgbackrest.conf; ls -l /etc/pgbackrest/pgbackrest.conf'
+
+Inspect the original configuration locally and confirm:
+- The stanza name (the commands below use postgres-ha).
+- The existing GCS bucket, repository path, and authentication settings.
+- Existing credential file paths and mounts.
+- The encryption settings used for the original backup.
+Do not share configuration output containing passwords or credential data.
+
+STEP 15 - TEST REPOSITORY ACCESS
+-------------------------------
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- sh -ec 'test -s /etc/pgbackrest-secret/repo-cipher-pass; PGBACKREST_REPO1_CIPHER_PASS=$(cat /etc/pgbackrest-secret/repo-cipher-pass); export PGBACKREST_REPO1_CIPHER_PASS; pgbackrest --config=/etc/pgbackrest/pgbackrest.conf --stanza=postgres-ha info'
+
+Expected: stanza postgres-ha, status ok, and available backup information.
+If this fails, resolve the reported configuration, GCS authentication,
+cipher password, or repository problem before continuing.
+A successful info command confirms metadata access; it does not validate
+every backup file or prove that database recovery will succeed.
+
+STEP 16 - CREATE AND CHECK THE RESTORE DIRECTORY
+----------------------------------------------
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- mkdir -p /restore/pgdata
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- ls -la /restore/pgdata
+
+Use an empty, dedicated restore directory. If it already contains files,
+stop and identify them. Do not delete them or add --delta blindly.
+The target must not be in use by a running PostgreSQL server.
+
+STEP 17 - RUN THE RESTORE
+------------------------
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- sh -ec 'test -s /etc/pgbackrest-secret/repo-cipher-pass; PGBACKREST_REPO1_CIPHER_PASS=$(cat /etc/pgbackrest-secret/repo-cipher-pass); export PGBACKREST_REPO1_CIPHER_PASS; pgbackrest --config=/etc/pgbackrest/pgbackrest.conf --stanza=postgres-ha --pg1-path=/restore/pgdata restore'
+
+Expected final message: restore command end: completed successfully
+This is the default restore command from the earlier discussion, not a
+point-in-time recovery command. Review any tablespace/link mappings in the
+backup configuration so restored files remain isolated from live storage.
+
+STEP 18 - VERIFY RESTORED FILES
+------------------------------
+kubectl -n "$NS" exec pgbackrest-restore-toolbox -c pgbackrest-restore-toolbox -- sh -ec 'test -s /restore/pgdata/PG_VERSION; ls -lah /restore/pgdata | head -30; echo "RESTORED PG_VERSION:"; cat /restore/pgdata/PG_VERSION'
+
+Expected PostgreSQL files/directories include:
+  PG_VERSION
+  base
+  global
+  pg_wal
+  pg_multixact
+  postgresql.auto.conf
+
+File restoration is not the same as completed database recovery. Starting
+an isolated PostgreSQL instance with the matching major version, replaying
+required WAL, and validating queries belong to the subsequent recovery lab.
+Do not point the running Patroni cluster at this directory as part of this fix.
+
+FINAL CHECKLIST
+---------------
+[ ] Namespace and container names confirmed.
+[ ] Actual container UID/GID checked.
+[ ] Original repository cipher password preserved.
+[ ] Secret key mounted as /etc/pgbackrest-secret/repo-cipher-pass.
+[ ] Separate restore volume mounted at /restore.
+[ ] Correct fsGroup configured and write test successful.
+[ ] Existing pgBackRest config and GCS credential mounts preserved.
+[ ] pgbackrest info lists the intended backups.
+[ ] Dedicated restore target checked before restore.
+[ ] Restore reports completed successfully.
+[ ] Restored PostgreSQL files verified.
+
+These two toolbox errors alone do not require repeating the full,
+differential, or incremental backup. Confirm the existing backups with info.
