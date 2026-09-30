@@ -1,0 +1,38 @@
+cat > /home/rps/postgres.yml <<'EOF'
+---
+- name: PostgreSQL lab
+  hosts: localhost
+  connection: local
+  become: true
+  vars:
+    pg_version: "16"
+  tasks:
+    - name: Ensure packages
+      apt:
+        name:
+          - "postgresql-{{ pg_version }}"
+          - python3-psycopg2
+        state: present
+        update_cache: false
+
+    - name: Backup directory
+      file:
+        path: /var/backups/postgresql
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: "0750"
+
+    - name: App user
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        name: appuser
+        password: "ChangeMe-Lab-Only"
+        role_attr_flags: LOGIN
+
+    - name: App database
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: appdb
+        owner: appuser
+EOF
