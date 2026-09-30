@@ -15,6 +15,27 @@ cat env/terraform.tfvars
 terraform fmt -recursive
 terraform init
 
+terraform is not using your gcloud login. It needs Application Default Credentials.
+On the VM:
+gcloud auth application-default login --no-launch-browser
+Open the URL it prints, sign in, paste the code back into the terminal.
+Confirm:
+gcloud auth application-default print-access-token | head -c 20
+echo
+gcloud config get-value project
+
+Then retry import from the inner folder:
+cd /home/rps/tf-ansible-pg/tf-ansible-pg
+PROJECT_ID=$(gcloud config get-value project)
+VARFILE=/home/rps/tf-ansible-pg/tf-ansible-pg/env/terraform.tfvars
+
+terraform import -var-file="$VARFILE" \
+  module.network.google_compute_global_address.psa \
+  pg-lab-psa
+If this VM cannot do a browser login, use a service-account key instead (lab only):
+Bash# create/download a key only if the instructor allows
+export GOOGLE_APPLICATION_CREDENTIALS=/home/rps/tf-ansible-pg/tf-ansible-pg/adc.json
+
 Use the inner directory. Full STEP 17 (nothing cut off):
 cd /home/rps/tf-ansible-pg/tf-ansible-pg
 pwd
