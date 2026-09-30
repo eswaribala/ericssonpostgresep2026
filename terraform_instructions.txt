@@ -1,3 +1,7 @@
+#delete existing
+gcloud sql instances patch pg-lab-sql --no-deletion-protection --project=postgresql-admin-lab-2026
+gcloud sql instances delete pg-lab-sql --project=postgresql-admin-lab-2026
+
 mkdir -p /home/rps/tf-ansible-pg
 cd /home/rps
 unzip -o tf-ansible-pg-step15.zip
