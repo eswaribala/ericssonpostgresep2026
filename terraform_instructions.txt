@@ -16,27 +16,27 @@ terraform fmt -recursive
 terraform init
 
 Use the inner directory. Full STEP 17 (nothing cut off):
-Bash cd /home/rps/tf-ansible-pg/tf-ansible-pg
+cd /home/rps/tf-ansible-pg/tf-ansible-pg
 pwd
 PROJECT_ID=$(gcloud config get-value project)
 echo "$PROJECT_ID"
 VARFILE=/home/rps/tf-ansible-pg/tf-ansible-pg/env/terraform.tfvars
 ls -l "$VARFILE"
-Bashterraform import -var-file="$VARFILE" \
+terraform import -var-file="$VARFILE" \
   module.network.google_compute_global_address.psa \
   pg-lab-psa
-Bashterraform import -var-file="$VARFILE" \
+terraform import -var-file="$VARFILE" \
   module.network.google_compute_firewall.iap_ssh \
   pg-lab-allow-iap-ssh
-Bashterraform import -var-file="$VARFILE" \
+terraform import -var-file="$VARFILE" \
   module.network.google_compute_firewall.pg \
   pg-lab-allow-5432-internal
-Bashterraform import -var-file="$VARFILE" \
+terraform import -var-file="$VARFILE" \
   'module.network.google_service_networking_connection.psa' \
   "projects/${PROJECT_ID}/global/networks/pg-lab-vpc:servicenetworking.googleapis.com"
 If a command says the resource is already in state, that is OK. If it says the GCP object was not found, that object was never created in 1.1–1.3 — skip that import.
 Then STEP 18:
-Bashcd /home/rps/tf-ansible-pg/tf-ansible-pg
+cd /home/rps/tf-ansible-pg/tf-ansible-pg
 terraform plan -var-file="$VARFILE" -out=tfplan
 terraform apply tfplan
 terraform output
