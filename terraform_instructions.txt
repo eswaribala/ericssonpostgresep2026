@@ -2,9 +2,15 @@ mkdir -p /home/rps/tf-ansible-pg
 cd /home/rps
 unzip -o tf-ansible-pg-step15.zip
 # if zip extracts to tf-ansible-pg/, you already have the folder
-cp /home/rps/tf-ansible-pg/env/terraform.tfvars.example /home/rps/tf-ansible-pg/env/terraform.tfvars
-nano /home/rps/tf-ansible-pg/env/terraform.tfvars
-Set project_id to gcloud config get-value project.
-Bashcd /home/rps/tf-ansible-pg
+cd /home/rps/tf-ansible-pg/tf-ansible-pg
+pwd
+
+cp env/terraform.tfvars.example env/terraform.tfvars
+
+PROJECT_ID=$(gcloud config get-value project)
+echo "PROJECT_ID=$PROJECT_ID"
+sed -i "s/REPLACE_WITH_YOUR_PROJECT_ID/${PROJECT_ID}/" env/terraform.tfvars
+cat env/terraform.tfvars
+
 terraform fmt -recursive
 terraform init
