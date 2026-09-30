@@ -1,0 +1,25 @@
+On the VM
+cd /home/rps
+unzip -o tf-gcs-bucket-lab.zip
+cd /home/rps/tf-gcs-bucket-lab
+ls
+#Terraform needs ADC (this is the error you hit earlier):
+gcloud auth application-default login --no-launch-browser
+gcloud config get-value project
+cp terraform.tfvars.example terraform.tfvars
+PROJECT_ID=$(gcloud config get-value project)
+sed -i "s/REPLACE_WITH_YOUR_PROJECT_ID/${PROJECT_ID}/" terraform.tfvars
+sed -i "s/YOURNAME/${USER}/" terraform.tfvars
+cat terraform.tfvars
+#Bucket names must be globally unique. Change bucket_name if apply says it is taken.
+cd /home/rps/tf-gcs-bucket-lab
+terraform init
+terraform plan -var-file=terraform.tfvars
+terraform apply -var-file=terraform.tfvars
+terraform output
+gsutil ls
+gsutil ls gs://$(terraform output -raw bucket_name)
+Cleanup:
+terraform destroy -var-file=terraform.tfvars
+
+#Files in the zip: versions.tf, variables.tf, main.tf (google_storage_bucket), terraform.tfvars.example. No modules, no Cloud SQL. Unzip in /home/rps, not inside another lab folder.
