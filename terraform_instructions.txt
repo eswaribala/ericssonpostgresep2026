@@ -1,7 +1,30 @@
 #delete existing
 gcloud sql instances patch pg-lab-sql --no-deletion-protection --project=postgresql-admin-lab-2026
 gcloud sql instances delete pg-lab-sql --project=postgresql-admin-lab-2026
+1. See what is holding the connection
+Bashgcloud sql instances list --project=postgresql-admin-lab-2026
+You will almost certainly still see pg-lab-sql (and maybe others) on that VPC.
+Bashgcloud compute networks peerings list \
+  --network=pg-lab-vpc \
+  --project=postgresql-admin-lab-2026
+2. Remove the producer first (Cloud SQL)
+Protection must be off, then delete the instance before Terraform is allowed to delete PSA.
+Bashgcloud sql instances patch pg-lab-sql \
+  --no-deletion-protection \
+  --project=postgresql-admin-lab-2026
 
+gcloud sql instances delete pg-lab-sql \
+  --project=postgresql-admin-lab-2026
+Wait until it disappears from gcloud sql instances list. Deletion can take several minutes.
+If Terraform state still has the instance, either:
+Bashterraform destroy -target=module.sql.google_sql_database_instance.this
+(only after deletion_protection=false is in state), or after gcloud delete:
+Bashterraform state rm 'module.sql.google_sql_database_instance.this'
+Also drop child resources if they remain in state (google_sql_user, google_sql_database).
+3. Then apply network/PSA changes
+Bashrm -f tfplan
+terraform plan
+terraform apply
 mkdir -p /home/rps/tf-ansible-pg
 cd /home/rps
 unzip -o tf-ansible-pg-step15.zip
